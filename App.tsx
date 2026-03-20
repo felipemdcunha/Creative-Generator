@@ -31,10 +31,28 @@ const App: React.FC = () => {
   useEffect(() => {
     const initSession = async () => {
       try {
+        // 1. Check for session in URL parameters (useful for iframe auto-login)
+        const searchParams = new URLSearchParams(window.location.search);
+        const accessToken = searchParams.get('access_token');
+        const refreshToken = searchParams.get('refresh_token');
+
+        if (accessToken && refreshToken) {
+          const { data: { session: urlSession }, error: urlError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+          if (!urlError && urlSession) {
+            setSession(urlSession);
+            fetchSets();
+            setLoading(false);
+            return;
+          }
+        }
+
+        // 2. Check for existing session in local storage
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error("Session error:", error.message);
-          // If it's a refresh token error, we sign out to clear local storage
           if (error.message.includes('Refresh Token Not Found') || 
               error.message.includes('invalid_grant') || 
               error.message.includes('refresh_token_not_found')) {
@@ -54,6 +72,20 @@ const App: React.FC = () => {
 
     initSession();
 
+    // 3. Listen for session messages from parent system (iframe communication)
+    const handleMessage = async (event: MessageEvent) => {
+      // You can add origin validation here for security: if (event.origin !== 'https://your-parent-domain.com') return;
+      if (event.data?.type === 'SB_SET_SESSION' && event.data?.session) {
+        const { session: msgSession } = event.data;
+        const { error } = await supabase.auth.setSession(msgSession);
+        if (!error) {
+          setSession(msgSession);
+          fetchSets();
+        }
+      }
+    };
+    window.addEventListener('message', handleMessage);
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -61,7 +93,6 @@ const App: React.FC = () => {
       if (session) {
         fetchSets();
       } else {
-        // Clear state on sign out or session loss
         setSets([]);
         setPersonas([]);
         setView('sets');
@@ -70,7 +101,10 @@ const App: React.FC = () => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('message', handleMessage);
+    };
   }, []);
 
   const fetchSets = async () => {
