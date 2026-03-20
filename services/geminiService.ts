@@ -4,9 +4,11 @@ import { urlToBase64 } from "../lib/utils";
 
 // Helper to get client instance at runtime
 const getGenAI = () => {
-  const apiKey = process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  console.log("API KEY:", apiKey?.slice(0, 10));
+  
   if (!apiKey) {
-    throw new Error("API Key não configurada. Crie um arquivo .env com API_KEY=SuaChave ou configure nas Variáveis de Ambiente do seu servidor de hospedagem.");
+    throw new Error("API Key não configurada. Crie um arquivo .env com VITE_GEMINI_API_KEY=SuaChave ou configure nas Variáveis de Ambiente do seu servidor de hospedagem.");
   }
   return new GoogleGenAI({ apiKey });
 };
