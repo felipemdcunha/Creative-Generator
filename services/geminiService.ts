@@ -4,12 +4,16 @@ import { urlToBase64 } from "../lib/utils";
 
 // Helper to get client instance at runtime
 const getGenAI = () => {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  console.log("API KEY:", apiKey?.slice(0, 10));
-  
+  // Try multiple sources for the API Key
+  const apiKey = 
+    import.meta.env.VITE_GEMINI_API_KEY || 
+    (window as any).process?.env?.GEMINI_API_KEY ||
+    (import.meta as any).env?.GEMINI_API_KEY;
+
   if (!apiKey) {
-    throw new Error("API Key não configurada. Crie um arquivo .env com VITE_GEMINI_API_KEY=SuaChave ou configure nas Variáveis de Ambiente do seu servidor de hospedagem.");
+    throw new Error("API Key não configurada. Certifique-se de que a variável VITE_GEMINI_API_KEY está definida.");
   }
+  
   return new GoogleGenAI({ apiKey });
 };
 
@@ -18,8 +22,8 @@ export const generateCreativeIdea = async (
   persona: Persona,
   config: GenerationConfig,
 ): Promise<CreativeIdea> => {
-  const model = 'gemini-3-flash-preview'; // Fast text model
-  const ai = getGenAI(); // Instantiate here to ensure key is ready
+  const model = 'gemini-3-flash-preview'; 
+  const ai = getGenAI(); 
 
   const personaData = persona.advanced_data;
   const brandColors = set.brand_colors ? JSON.stringify(set.brand_colors) : JSON.stringify({ primary: "#000000", secondary: "#FFFFFF", tertiary: "#333333" });
@@ -227,9 +231,9 @@ export const generateCreativeImage = async (
   textOverlay: string | null = null, // Explicit text to write on image
   isEditing: boolean = false
 ): Promise<string> => {
-  // Using gemini-3-pro-image-preview
-  const model = 'gemini-3-pro-image-preview';
-  const ai = getGenAI(); // Instantiate here
+  // Using gemini-2.5-flash-image as the default for general image generation
+  const model = 'gemini-2.5-flash-image';
+  const ai = getGenAI(); 
 
   const parts: any[] = [];
   
